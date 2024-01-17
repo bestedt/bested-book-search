@@ -1,41 +1,37 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
-
-import { createUser } from '../utils/API';
+import { useMutation } from '@apollo/client';
+// import the ADD_USER mutation from the mutations file
+import { ADD_USER } from '../utils/mutations'; 
 import Auth from '../utils/auth';
-
+// then we will create the signup form component
 const SignupForm = () => {
-  // set initial form state
   const [userFormData, setUserFormData] = useState({ username: '', email: '', password: '' });
-  // set state for form validation
   const [validated] = useState(false);
-  // set state for alert
   const [showAlert, setShowAlert] = useState(false);
-
+// here is where the mutation will be used from our mutations file
+  const [addUser] = useMutation(ADD_USER);
+// here is where we will handle the input change
   const handleInputChange = (event) => {
     const { name, value } = event.target;
     setUserFormData({ ...userFormData, [name]: value });
   };
-
+// here is where we will handle the form submit
   const handleFormSubmit = async (event) => {
     event.preventDefault();
-
-    // check if form has everything (as per react-bootstrap docs)
+// validate the form
     const form = event.currentTarget;
     if (form.checkValidity() === false) {
       event.preventDefault();
       event.stopPropagation();
     }
-
+// use the mutation to add the user
     try {
-      const response = await createUser(userFormData);
-
-      if (!response.ok) {
-        throw new Error('something went wrong!');
-      }
-
-      const { token, user } = await response.json();
-      console.log(user);
+      const { data } = await addUser({
+        variables: { ...userFormData },
+      });
+// handle the response from the mutation
+      const { token, user } = data.addUser;
       Auth.login(token);
     } catch (err) {
       console.error(err);
@@ -48,12 +44,10 @@ const SignupForm = () => {
       password: '',
     });
   };
-
+// here is the structure of the signup form that was part of the starter code
   return (
     <>
-      {/* This is needed for the validation functionality above */}
       <Form noValidate validated={validated} onSubmit={handleFormSubmit}>
-        {/* show alert if server response is bad */}
         <Alert dismissible onClose={() => setShowAlert(false)} show={showAlert} variant='danger'>
           Something went wrong with your signup!
         </Alert>
@@ -96,6 +90,7 @@ const SignupForm = () => {
           />
           <Form.Control.Feedback type='invalid'>Password is required!</Form.Control.Feedback>
         </Form.Group>
+
         <Button
           disabled={!(userFormData.username && userFormData.email && userFormData.password)}
           type='submit'
@@ -106,5 +101,5 @@ const SignupForm = () => {
     </>
   );
 };
-
+// export the component
 export default SignupForm;

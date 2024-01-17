@@ -1,54 +1,64 @@
-// see SignupForm.js for comments
-import { useState } from 'react';
+// here is where we will create the login form component, fisrt we will import the react hooks and the apollo client
+import React, { useState } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
+import { useMutation } from '@apollo/client';
 
-import { loginUser } from '../utils/API';
+import { LOGIN_USER } from '../utils/mutations'; // Update the import path accordingly
 import Auth from '../utils/auth';
-
+// then we will create the login form component
 const LoginForm = () => {
   const [userFormData, setUserFormData] = useState({ email: '', password: '' });
   const [validated] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
-
+// here is where the mutation will be used from our mutations file
+  const [loginUser] = useMutation(LOGIN_USER);
   const handleInputChange = (event) => {
     const { name, value } = event.target;
     setUserFormData({ ...userFormData, [name]: value });
   };
-
+// here is where we will handle the form submit
   const handleFormSubmit = async (event) => {
     event.preventDefault();
-
-    // check if form has everything (as per react-bootstrap docs)
+  // here is where we will validate the form
     const form = event.currentTarget;
     if (form.checkValidity() === false) {
       event.preventDefault();
       event.stopPropagation();
     }
-
+  // here is where we will use the mutation to login the user
     try {
-      const response = await loginUser(userFormData);
-
-      if (!response.ok) {
-        throw new Error('something went wrong!');
+      const { data } = await loginUser({
+        variables: { ...userFormData },
+      });
+  // here is where we will handle the response from the mutation
+      console.log('Data received from loginUser mutation:', data);
+  
+      const loginUserData = data && data.login;
+  // here is where we will handle the case where the server response is missing or does not contain loginUser
+      if (loginUserData) {
+        const { token, user } = loginUserData;
+        console.log('Token and user:', token, user);
+  
+        Auth.login(token);
+      } else {
+        // another way to handle this would be to throw an error
+        console.error('loginUser mutation response does not contain loginUser:', data);
+        setShowAlert(true);
       }
-
-      const { token, user } = await response.json();
-      console.log(user);
-      Auth.login(token);
     } catch (err) {
       console.error(err);
       setShowAlert(true);
     }
-
+  // here is where we will reset the form
     setUserFormData({
-      username: '',
       email: '',
       password: '',
     });
   };
-
+// here is the structure of the login form that was part of the starter code
   return (
     <>
+
       <Form noValidate validated={validated} onSubmit={handleFormSubmit}>
         <Alert dismissible onClose={() => setShowAlert(false)} show={showAlert} variant='danger'>
           Something went wrong with your login credentials!
@@ -88,5 +98,5 @@ const LoginForm = () => {
     </>
   );
 };
-
+// export the login form component
 export default LoginForm;
