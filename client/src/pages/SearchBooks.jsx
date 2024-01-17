@@ -37,24 +37,24 @@ const SearchBooks = () => {
     },
   });
 // here is the handleFormSubmit function to search for books
-  const handleFormSubmit = async (event) => {
-    event.preventDefault();
+const handleFormSubmit = async (event) => {
+  event.preventDefault();
 
-    if (!searchInput) {
-      return false;
-    }
+  if (!searchInput) {
+    return false;
+  }
 
-    try {
-      // using a try/catch instead of promises to handle errors
-      searchGoogleBooks({
-        variables: { searchInput: searchInput },
-      });
+  try {
+    // using the Lazy Query for searching Google Books
+    searchGoogleBooks({
+      variables: { searchInput },  
+    });
 
-      setSearchInput('');
-    } catch (err) {
-      console.error(err);
-    }
-  };
+    setSearchInput('');
+  } catch (err) {
+    console.error(err);
+  }
+};
 // my handleSaveBook function is not working, getting an error saying im not logged in when i am 
   const handleSaveBook = async (bookId) => {
     if (Auth.loggedIn()) {
