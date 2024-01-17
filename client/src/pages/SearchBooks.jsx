@@ -1,33 +1,42 @@
-import { useState, useEffect } from 'react';
-import {
-  Container,
-  Col,
-  Form,
-  Button,
-  Card,
-  Row
-} from 'react-bootstrap';
+// importing the necessary dependencies in cluding query and mutation and components
+import React, { useState, useEffect } from 'react';
+import { useMutation, useLazyQuery } from '@apollo/client';
+import { Container, Col, Form, Button, Card, Row } from 'react-bootstrap';
 
 import Auth from '../utils/auth';
-import { saveBook, searchGoogleBooks } from '../utils/API';
+import { SEARCH_GOOGLE_BOOKS } from '../utils/queries';
 import { saveBookIds, getSavedBookIds } from '../utils/localStorage';
-
+import { SAVE_BOOK } from '../utils/mutations';
+// the searchBooks component is created to search for books thatnthe user can save
 const SearchBooks = () => {
-  // create state for holding returned google api data
   const [searchedBooks, setSearchedBooks] = useState([]);
-  // create state for holding our search field data
   const [searchInput, setSearchInput] = useState('');
-
-  // create state to hold saved bookId values
   const [savedBookIds, setSavedBookIds] = useState(getSavedBookIds());
 
-  // set up useEffect hook to save `savedBookIds` list to localStorage on component unmount
-  // learn more here: https://reactjs.org/docs/hooks-effect.html#effects-with-cleanup
+  const [searchGoogleBooks, { loading, data }] = useLazyQuery(SEARCH_GOOGLE_BOOKS);
+// the useEffect Hook is used to save the bookIds to localStorage on component unmount
   useEffect(() => {
-    return () => saveBookIds(savedBookIds);
-  });
+    if (data) {
+      const bookData = data.searchGoogleBooks.map((book) => ({
+        bookId: book.bookId,
+        authors: book.authors || ['No authors to display'],
+        title: book.title,
+        description: book.description,
+        image: book.image || '',
+      }));
 
-  // create method to search for books and set state on form submit
+      setSearchedBooks(bookData);
+    }
+  }, [data]);
+// here is the saveBook mutation currenty it is not working, getting an error saying im not logged in
+  const [saveBook] = useMutation(SAVE_BOOK, {
+    context: {
+      headers: {
+        Authorization: `Bearer ${Auth.getToken()}`,
+      },
+    },
+  });
+// here is the handleFormSubmit function to search for books
   const handleFormSubmit = async (event) => {
     event.preventDefault();
 
@@ -36,55 +45,53 @@ const SearchBooks = () => {
     }
 
     try {
-      const response = await searchGoogleBooks(searchInput);
+      // using a try/catch instead of promises to handle errors
+      searchGoogleBooks({
+        variables: { searchInput: searchInput },
+      });
 
-      if (!response.ok) {
-        throw new Error('something went wrong!');
-      }
-
-      const { items } = await response.json();
-
-      const bookData = items.map((book) => ({
-        bookId: book.id,
-        authors: book.volumeInfo.authors || ['No author to display'],
-        title: book.volumeInfo.title,
-        description: book.volumeInfo.description,
-        image: book.volumeInfo.imageLinks?.thumbnail || '',
-      }));
-
-      setSearchedBooks(bookData);
       setSearchInput('');
     } catch (err) {
       console.error(err);
     }
   };
-
-  // create function to handle saving a book to our database
+// my handleSaveBook function is not working, getting an error saying im not logged in when i am 
   const handleSaveBook = async (bookId) => {
-    // find the book in `searchedBooks` state by the matching id
-    const bookToSave = searchedBooks.find((book) => book.bookId === bookId);
+    if (Auth.loggedIn()) {
+      const bookToSave = searchedBooks.find((book) => book.bookId === bookId);
 
-    // get token
-    const token = Auth.loggedIn() ? Auth.getToken() : null;
-
-    if (!token) {
-      return false;
-    }
-
-    try {
-      const response = await saveBook(bookToSave, token);
-
-      if (!response.ok) {
-        throw new Error('something went wrong!');
+      try {
+        const { data } = await saveBook({
+          variables: { bookData: bookToSave },
+          context: {
+            headers: {
+              Authorization: `Bearer ${Auth.getToken()}`,
+            },
+          },
+        });
+// here is the saveBookId function to save the bookId to localStorage
+        const savedBookId = data.saveBook.savedBooks[0].bookId;
+        setSavedBookIds([...savedBookIds, savedBookId]);
+      } catch (err) {
+        console.error(err);
       }
-
-      // if book successfully saves to user's account, save book id to state
-      setSavedBookIds([...savedBookIds, bookToSave.bookId]);
-    } catch (err) {
-      console.error(err);
+    } else {
+      console.log("User is not logged in. Cannot save the book.");
+      
     }
   };
-
+// rendering the books
+  const renderBooks = () => {
+    return (
+      <Container>
+        <h2 className='mt-5 mb-4'>Results</h2>
+        {searchedBooks.map((book) => (
+          <BookItem key={book.bookId} book={book} handleSaveBook={handleSaveBook} />
+        ))}
+      </Container>
+    );
+  };
+// the structure of the SearchBooks component from the starter code
   return (
     <>
       <div className="text-light bg-dark p-5">
@@ -119,36 +126,34 @@ const SearchBooks = () => {
             : 'Search for a book to begin'}
         </h2>
         <Row>
-          {searchedBooks.map((book) => {
-            return (
-              <Col md="4" key={book.bookId}>
-                <Card border='dark'>
-                  {book.image ? (
-                    <Card.Img src={book.image} alt={`The cover for ${book.title}`} variant='top' />
-                  ) : null}
-                  <Card.Body>
-                    <Card.Title>{book.title}</Card.Title>
-                    <p className='small'>Authors: {book.authors}</p>
-                    <Card.Text>{book.description}</Card.Text>
-                    {Auth.loggedIn() && (
-                      <Button
-                        disabled={savedBookIds?.some((savedBookId) => savedBookId === book.bookId)}
-                        className='btn-block btn-info'
-                        onClick={() => handleSaveBook(book.bookId)}>
-                        {savedBookIds?.some((savedBookId) => savedBookId === book.bookId)
-                          ? 'This book has already been saved!'
-                          : 'Save this Book!'}
-                      </Button>
-                    )}
-                  </Card.Body>
-                </Card>
-              </Col>
-            );
-          })}
+          {searchedBooks.map((book) => (
+            <Col md="4" key={book.bookId}>
+              <Card border='dark'>
+                {book.image ? (
+                  <Card.Img src={book.image} alt={`The cover for ${book.title}`} variant='top' />
+                ) : null}
+                <Card.Body>
+                  <Card.Title>{book.title}</Card.Title>
+                  <p className='small'>Authors: {book.authors.join(', ')}</p>
+                  <Card.Text>{book.description}</Card.Text>
+                  {Auth.loggedIn() && (
+                    <Button
+                      disabled={savedBookIds?.some((savedBookId) => savedBookId === book.bookId)}
+                      className='btn-block btn-info'
+                      onClick={() => handleSaveBook(book.bookId)}>
+                      {savedBookIds?.some((savedBookId) => savedBookId === book.bookId)
+                        ? 'This book has already been saved!'
+                        : 'Save this Book!'}
+                    </Button>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
         </Row>
       </Container>
     </>
   );
 };
-
+// exporting the SearchBooks component
 export default SearchBooks;
