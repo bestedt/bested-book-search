@@ -56,30 +56,33 @@ const handleFormSubmit = async (event) => {
   }
 };
 // my handleSaveBook function is not working, getting an error saying im not logged in when i am 
-  const handleSaveBook = async (bookId) => {
-    if (Auth.loggedIn()) {
-      const bookToSave = searchedBooks.find((book) => book.bookId === bookId);
+const handleSaveBook = async (bookId) => {
+  if (Auth.loggedIn()) {
+    const bookToSave = searchedBooks.find((book) => book.bookId === bookId);
 
-      try {
-        const { data } = await saveBook({
-          variables: { bookData: bookToSave },
-          context: {
-            headers: {
-              Authorization: `Bearer ${Auth.getToken()}`,
-            },
-          },
-        });
-// here is the saveBookId function to save the bookId to localStorage
-        const savedBookId = data.saveBook.savedBooks[0].bookId;
-        setSavedBookIds([...savedBookIds, savedBookId]);
-      } catch (err) {
-        console.error(err);
-      }
-    } else {
-      console.log("User is not logged in. Cannot save the book.");
-      
+    try {
+      // Log headers to verify the token is being sent
+      console.log('Request Headers:', {
+        Authorization: `Bearer ${Auth.getToken()}`,
+      });
+
+      const { data } = await saveBook({
+        variables: { bookData: bookToSave },
+        headers: {
+          Authorization: `Bearer ${Auth.getToken()}`,
+        },
+      });
+
+      // Update your state or perform any other necessary actions
+      const savedBookId = data.saveBook.savedBooks[0].bookId;
+      setSavedBookIds([...savedBookIds, savedBookId]);
+    } catch (err) {
+      console.error(err);
     }
-  };
+  } else {
+    console.log("User is not logged in. Cannot save the book.");
+  }
+};
 // rendering the books
   const renderBooks = () => {
     return (
