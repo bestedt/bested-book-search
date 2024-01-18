@@ -42,9 +42,10 @@ SO THAT I can keep a list of books to purchase
 - 
 ## Screen Shots
 
+![Screenshot 2024-01-18 145611](https://github.com/bestedt/bested-book-search/assets/139821441/0d82bfdb-88ec-40ec-bb80-ae8234d0da36)
 
 ## Deployed URL
-
+https://bested-book-search-8ceb5fcfec9a.herokuapp.com/
 
 ## Source Code 
 
