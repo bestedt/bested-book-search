@@ -19,6 +19,7 @@ module.exports = {
       console.error('Invalid token', err);
       return { user: null };
     }
+    return req;
   },
   // function for our authenticated routes
   signToken: function ({ username, email, _id }) {
